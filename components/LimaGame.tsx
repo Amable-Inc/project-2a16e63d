@@ -7,7 +7,6 @@ export default function LimaGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -315,16 +314,8 @@ export default function LimaGame() {
     let pointerLocked = false;
 
     const onPointerLockChange = () => {
-      const nowLocked = document.pointerLockElement === renderer.domElement;
-      pointerLocked = nowLocked;
-      setIsPointerLocked(nowLocked);
-      
-      // When locking, unpause. When unlocking, pause
-      if (nowLocked) {
-        setIsPaused(false);
-      } else {
-        setIsPaused(true);
-      }
+      pointerLocked = document.pointerLockElement === renderer.domElement;
+      setIsPointerLocked(pointerLocked);
     };
 
     const onPointerLockError = () => {
@@ -357,12 +348,6 @@ export default function LimaGame() {
     // Keyboard controls
     const onKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
-      
-      // ESC to exit pointer lock (browser does this automatically, but we track it)
-      if (e.key === 'Escape' && pointerLocked) {
-        // Browser will exit pointer lock automatically
-        // Our onPointerLockChange will handle the pause state
-      }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
@@ -475,24 +460,12 @@ export default function LimaGame() {
             Explora Lima, Perú 🇵🇪
           </h1>
           <p className="text-white drop-shadow-md text-lg">
-            {isPaused 
-              ? '⏸️ EN PAUSE • Cliquez pour reprendre' 
-              : isPointerLocked 
-                ? 'WASD pour bouger • Souris pour regarder • ESC pour pause'
-                : '🖱️ Cliquez sur l\'écran pour commencer'}
+            {isPointerLocked 
+              ? 'WASD pour bouger • Souris pour regarder • ESC pour sortir'
+              : '🖱️ Cliquez sur l\'écran pour commencer'}
           </p>
         </div>
       </div>
-
-      {/* Pause overlay - only shows when actually paused (after ESC) */}
-      {isPaused && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-20">
-          <div className="bg-white/90 p-8 rounded-lg text-center">
-            <h2 className="text-3xl font-bold mb-4">⏸️ Pause</h2>
-            <p className="text-lg">Cliquez pour reprendre</p>
-          </div>
-        </div>
-      )}
 
       {/* Controles de música */}
       <button
