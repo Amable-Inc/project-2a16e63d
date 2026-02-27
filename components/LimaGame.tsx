@@ -6,6 +6,7 @@ import * as THREE from 'three';
 export default function LimaGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -304,44 +305,111 @@ export default function LimaGame() {
     const velocity = new THREE.Vector3();
     const speed = 0.3;
 
-    window.addEventListener('keydown', (e) => {
+    // Rotation variables
+    let rotationX = 0;
+    let rotationY = 0;
+    const rotationSpeed = 0.003; // Increased from implicit slower speed
+
+    // Pointer lock
+    let isPointerLocked = false;
+
+    const onPointerLockChange = () => {
+      isPointerLocked = document.pointerLockElement === renderer.domElement;
+      setIsPaused(!isPointerLocked);
+    };
+
+    const onPointerLockError = () => {
+      console.log('Pointer lock error');
+    };
+
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('pointerlockerror', onPointerLockError);
+
+    // Click to lock pointer
+    renderer.domElement.addEventListener('click', () => {
+      if (!isPointerLocked) {
+        renderer.domElement.requestPointerLock();
+      }
+    });
+
+    // Mouse movement for rotation (using movementX/Y for pointer lock)
+    const onMouseMove = (e: MouseEvent) => {
+      if (isPointerLocked) {
+        rotationY -= e.movementX * rotationSpeed;
+        rotationX -= e.movementY * rotationSpeed;
+        
+        // Clamp vertical rotation to prevent flipping
+        rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+
+    // Keyboard controls
+    const onKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
-    });
+      
+      // ESC to exit pointer lock
+      if (e.key === 'Escape') {
+        document.exitPointerLock();
+      }
+    };
 
-    window.addEventListener('keyup', (e) => {
+    const onKeyUp = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = false;
-    });
+    };
 
-    let mouseX = 0;
-    let mouseY = 0;
-
-    window.addEventListener('mousemove', (e) => {
-      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-    });
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
 
     // Animación
     const animate = () => {
       requestAnimationFrame(animate);
 
-      // Movimiento del jugador
-      velocity.set(0, 0, 0);
+      if (isPointerLocked) {
+        // Movimiento del jugador
+        velocity.set(0, 0, 0);
 
-      if (keys['w'] || keys['arrowup']) velocity.z -= speed;
-      if (keys['s'] || keys['arrowdown']) velocity.z += speed;
-      if (keys['a'] || keys['arrowleft']) velocity.x -= speed;
-      if (keys['d'] || keys['arrowright']) velocity.x += speed;
+        const direction = new THREE.Vector3();
+        const right = new THREE.Vector3();
 
-      camera.position.add(velocity);
-      
-      // Rotar cámara con mouse
-      camera.rotation.y = -mouseX * 0.5;
-      camera.rotation.x = mouseY * 0.3;
+        // Calculate forward and right vectors based on camera rotation
+        direction.set(
+          Math.sin(rotationY),
+          0,
+          Math.cos(rotationY)
+        );
+        right.set(
+          Math.sin(rotationY + Math.PI / 2),
+          0,
+          Math.cos(rotationY + Math.PI / 2)
+        );
 
-      // Límites del mapa
-      camera.position.x = Math.max(-80, Math.min(80, camera.position.x));
-      camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
-      camera.position.y = Math.max(2, Math.min(30, camera.position.y));
+        if (keys['w'] || keys['arrowup']) {
+          velocity.add(direction.multiplyScalar(-speed));
+        }
+        if (keys['s'] || keys['arrowdown']) {
+          velocity.add(direction.multiplyScalar(speed));
+        }
+        if (keys['a'] || keys['arrowleft']) {
+          velocity.add(right.multiplyScalar(-speed));
+        }
+        if (keys['d'] || keys['arrowright']) {
+          velocity.add(right.multiplyScalar(speed));
+        }
+
+        camera.position.add(velocity);
+        
+        // Apply rotation to camera
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = rotationY;
+        camera.rotation.x = rotationX;
+
+        // Límites del mapa
+        camera.position.x = Math.max(-80, Math.min(80, camera.position.x));
+        camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
+        camera.position.y = Math.max(2, Math.min(30, camera.position.y));
+      }
 
       renderer.render(scene, camera);
     };
@@ -359,11 +427,15 @@ export default function LimaGame() {
 
     // Cleanup
     return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('pointerlockerror', onPointerLockError);
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('keydown', () => {});
-      window.removeEventListener('keyup', () => {});
-      window.removeEventListener('mousemove', () => {});
-      containerRef.current?.removeChild(renderer.domElement);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      if (containerRef.current && renderer.domElement.parentElement) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
       renderer.dispose();
     };
   }, []);
@@ -393,10 +465,22 @@ export default function LimaGame() {
             Explora Lima, Perú 🇵🇪
           </h1>
           <p className="text-white drop-shadow-md text-lg">
-            Usa WASD o las flechas para moverte • Mueve el mouse para mirar alrededor
+            {isPaused 
+              ? '🖱️ Clique sur l\'écran pour jouer • ESC pour mettre en pause' 
+              : 'WASD pour bouger • Souris pour regarder • ESC pour pause'}
           </p>
         </div>
       </div>
+
+      {/* Pause overlay */}
+      {isPaused && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white/90 p-8 rounded-lg text-center">
+            <h2 className="text-3xl font-bold mb-4">⏸️ Pause</h2>
+            <p className="text-lg">Cliquez pour continuer</p>
+          </div>
+        </div>
+      )}
 
       {/* Controles de música */}
       <button
