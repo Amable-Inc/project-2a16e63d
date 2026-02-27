@@ -7,7 +7,7 @@ const LimaGame = dynamic(() => import('@/components/LimaGame'), { ssr: false });
 
 export default function Home() {
   return (
-    <div className="w-full h-screen bg-black">
+    <div className="w-full h-full fixed inset-0 bg-black overflow-hidden">
       <LimaGame />
     </div>
   );

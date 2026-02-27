@@ -11,6 +11,8 @@ export default function LimaGame() {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const container = containerRef.current;
+
     // Configuración de la escena
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Cielo azul de Lima
@@ -19,7 +21,7 @@ export default function LimaGame() {
     // Cámara
     const camera = new THREE.PerspectiveCamera(
       75,
-      window.innerWidth / window.innerHeight,
+      container.clientWidth / container.clientHeight,
       0.1,
       1000
     );
@@ -27,10 +29,11 @@ export default function LimaGame() {
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    containerRef.current.appendChild(renderer.domElement);
+    renderer.domElement.style.display = 'block';
+    container.appendChild(renderer.domElement);
 
     // Iluminación
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -393,9 +396,10 @@ export default function LimaGame() {
 
     // Manejo de resize
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      if (!container) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(container.clientWidth, container.clientHeight);
     };
 
     window.addEventListener('resize', handleResize);
@@ -405,8 +409,8 @@ export default function LimaGame() {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      if (containerRef.current && renderer.domElement.parentElement) {
-        containerRef.current.removeChild(renderer.domElement);
+      if (container && renderer.domElement.parentElement) {
+        container.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
@@ -429,7 +433,7 @@ export default function LimaGame() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-screen">
+    <div ref={containerRef} className="relative w-full h-full">
       {/* UI Overlay */}
       <div className="absolute top-0 left-0 right-0 p-6 pointer-events-none z-10">
         <div className="max-w-7xl mx-auto">
