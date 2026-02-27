@@ -6,7 +6,7 @@ import * as THREE from 'three';
 export default function LimaGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -308,14 +308,14 @@ export default function LimaGame() {
     // Rotation variables
     let rotationX = 0;
     let rotationY = 0;
-    const rotationSpeed = 0.003; // Increased from implicit slower speed
+    const rotationSpeed = 0.003;
 
-    // Pointer lock
-    let isPointerLocked = false;
+    // Pointer lock tracking
+    let pointerLocked = false;
 
     const onPointerLockChange = () => {
-      isPointerLocked = document.pointerLockElement === renderer.domElement;
-      setIsPaused(!isPointerLocked);
+      pointerLocked = document.pointerLockElement === renderer.domElement;
+      setIsPointerLocked(pointerLocked);
     };
 
     const onPointerLockError = () => {
@@ -327,14 +327,14 @@ export default function LimaGame() {
 
     // Click to lock pointer
     renderer.domElement.addEventListener('click', () => {
-      if (!isPointerLocked) {
+      if (!pointerLocked) {
         renderer.domElement.requestPointerLock();
       }
     });
 
     // Mouse movement for rotation (using movementX/Y for pointer lock)
     const onMouseMove = (e: MouseEvent) => {
-      if (isPointerLocked) {
+      if (pointerLocked) {
         rotationY -= e.movementX * rotationSpeed;
         rotationX -= e.movementY * rotationSpeed;
         
@@ -366,7 +366,7 @@ export default function LimaGame() {
     const animate = () => {
       requestAnimationFrame(animate);
 
-      if (isPointerLocked) {
+      if (pointerLocked) {
         // Movimiento del jugador
         velocity.set(0, 0, 0);
 
@@ -459,13 +459,13 @@ export default function LimaGame() {
   return (
     <div ref={containerRef} className="relative w-full h-screen">
       {/* UI Overlay */}
-      <div className="absolute top-0 left-0 right-0 p-6 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 p-6 pointer-events-none z-10">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold text-white drop-shadow-lg mb-2">
             Explora Lima, Perú 🇵🇪
           </h1>
           <p className="text-white drop-shadow-md text-lg">
-            {isPaused 
+            {!isPointerLocked 
               ? '🖱️ Clique sur l\'écran pour jouer • ESC pour mettre en pause' 
               : 'WASD pour bouger • Souris pour regarder • ESC pour pause'}
           </p>
@@ -473,11 +473,11 @@ export default function LimaGame() {
       </div>
 
       {/* Pause overlay */}
-      {isPaused && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+      {!isPointerLocked && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none z-20">
           <div className="bg-white/90 p-8 rounded-lg text-center">
-            <h2 className="text-3xl font-bold mb-4">⏸️ Pause</h2>
-            <p className="text-lg">Cliquez pour continuer</p>
+            <h2 className="text-3xl font-bold mb-4">⏸️ En Pause</h2>
+            <p className="text-lg">Cliquez pour jouer</p>
           </div>
         </div>
       )}
@@ -485,13 +485,13 @@ export default function LimaGame() {
       {/* Controles de música */}
       <button
         onClick={toggleMusic}
-        className="absolute bottom-6 right-6 bg-white/90 hover:bg-white text-gray-800 font-semibold py-3 px-6 rounded-full shadow-lg transition-all pointer-events-auto"
+        className="absolute bottom-6 right-6 bg-white/90 hover:bg-white text-gray-800 font-semibold py-3 px-6 rounded-full shadow-lg transition-all pointer-events-auto z-10"
       >
         {isPlaying ? '🔊 Pausar Música' : '🎵 Reproducir Música Peruana'}
       </button>
 
       {/* Información de lugares */}
-      <div className="absolute bottom-6 left-6 bg-black/70 text-white p-4 rounded-lg max-w-sm pointer-events-none">
+      <div className="absolute bottom-6 left-6 bg-black/70 text-white p-4 rounded-lg max-w-sm pointer-events-none z-10">
         <h3 className="font-bold text-lg mb-2">Lugares de Interés:</h3>
         <ul className="text-sm space-y-1">
           <li>🏛️ Plaza de Armas (Centro)</li>
