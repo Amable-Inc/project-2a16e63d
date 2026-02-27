@@ -6,7 +6,6 @@ import * as THREE from 'three';
 export default function LimaGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isPointerLocked, setIsPointerLocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -306,44 +305,9 @@ export default function LimaGame() {
     const speed = 0.3;
 
     // Rotation variables
-    let rotationX = 0;
     let rotationY = 0;
-    const rotationSpeed = 0.003;
-
-    // Pointer lock tracking
-    let pointerLocked = false;
-
-    const onPointerLockChange = () => {
-      pointerLocked = document.pointerLockElement === renderer.domElement;
-      setIsPointerLocked(pointerLocked);
-    };
-
-    const onPointerLockError = () => {
-      console.log('Pointer lock error');
-    };
-
-    document.addEventListener('pointerlockchange', onPointerLockChange);
-    document.addEventListener('pointerlockerror', onPointerLockError);
-
-    // Click to lock pointer
-    renderer.domElement.addEventListener('click', () => {
-      if (!pointerLocked) {
-        renderer.domElement.requestPointerLock();
-      }
-    });
-
-    // Mouse movement for rotation (using movementX/Y for pointer lock)
-    const onMouseMove = (e: MouseEvent) => {
-      if (pointerLocked) {
-        rotationY -= e.movementX * rotationSpeed;
-        rotationX -= e.movementY * rotationSpeed;
-        
-        // Clamp vertical rotation to prevent flipping
-        rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
-      }
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
+    let rotationX = 0;
+    const rotationSpeed = 0.05;
 
     // Keyboard controls
     const onKeyDown = (e: KeyboardEvent) => {
@@ -361,50 +325,66 @@ export default function LimaGame() {
     const animate = () => {
       requestAnimationFrame(animate);
 
-      if (pointerLocked) {
-        // Movimiento del jugador
-        velocity.set(0, 0, 0);
+      // Movimiento del jugador
+      velocity.set(0, 0, 0);
 
-        const direction = new THREE.Vector3();
-        const right = new THREE.Vector3();
+      const direction = new THREE.Vector3();
+      const right = new THREE.Vector3();
 
-        // Calculate forward and right vectors based on camera rotation
-        direction.set(
-          Math.sin(rotationY),
-          0,
-          Math.cos(rotationY)
-        );
-        right.set(
-          Math.sin(rotationY + Math.PI / 2),
-          0,
-          Math.cos(rotationY + Math.PI / 2)
-        );
+      // Calculate forward and right vectors based on camera rotation
+      direction.set(
+        Math.sin(rotationY),
+        0,
+        Math.cos(rotationY)
+      );
+      right.set(
+        Math.sin(rotationY + Math.PI / 2),
+        0,
+        Math.cos(rotationY + Math.PI / 2)
+      );
 
-        if (keys['w'] || keys['arrowup']) {
-          velocity.add(direction.multiplyScalar(-speed));
-        }
-        if (keys['s'] || keys['arrowdown']) {
-          velocity.add(direction.multiplyScalar(speed));
-        }
-        if (keys['a'] || keys['arrowleft']) {
-          velocity.add(right.multiplyScalar(-speed));
-        }
-        if (keys['d'] || keys['arrowright']) {
-          velocity.add(right.multiplyScalar(speed));
-        }
-
-        camera.position.add(velocity);
-        
-        // Apply rotation to camera
-        camera.rotation.order = 'YXZ';
-        camera.rotation.y = rotationY;
-        camera.rotation.x = rotationX;
-
-        // Límites del mapa
-        camera.position.x = Math.max(-80, Math.min(80, camera.position.x));
-        camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
-        camera.position.y = Math.max(2, Math.min(30, camera.position.y));
+      // WASD movement
+      if (keys['w']) {
+        velocity.add(direction.multiplyScalar(-speed));
       }
+      if (keys['s']) {
+        velocity.add(direction.multiplyScalar(speed));
+      }
+      if (keys['a']) {
+        velocity.add(right.multiplyScalar(-speed));
+      }
+      if (keys['d']) {
+        velocity.add(right.multiplyScalar(speed));
+      }
+
+      // Arrow keys for rotation
+      if (keys['arrowleft']) {
+        rotationY += rotationSpeed;
+      }
+      if (keys['arrowright']) {
+        rotationY -= rotationSpeed;
+      }
+      if (keys['arrowup']) {
+        rotationX += rotationSpeed;
+      }
+      if (keys['arrowdown']) {
+        rotationX -= rotationSpeed;
+      }
+
+      // Clamp vertical rotation
+      rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+
+      camera.position.add(velocity);
+      
+      // Apply rotation to camera
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = rotationY;
+      camera.rotation.x = rotationX;
+
+      // Límites del mapa
+      camera.position.x = Math.max(-80, Math.min(80, camera.position.x));
+      camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
+      camera.position.y = Math.max(2, Math.min(30, camera.position.y));
 
       renderer.render(scene, camera);
     };
@@ -422,12 +402,9 @@ export default function LimaGame() {
 
     // Cleanup
     return () => {
-      document.removeEventListener('pointerlockchange', onPointerLockChange);
-      document.removeEventListener('pointerlockerror', onPointerLockError);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('mousemove', onMouseMove);
       if (containerRef.current && renderer.domElement.parentElement) {
         containerRef.current.removeChild(renderer.domElement);
       }
@@ -460,9 +437,7 @@ export default function LimaGame() {
             Explora Lima, Perú 🇵🇪
           </h1>
           <p className="text-white drop-shadow-md text-lg">
-            {isPointerLocked 
-              ? 'WASD pour bouger • Souris pour regarder • ESC pour sortir'
-              : '🖱️ Cliquez sur l\'écran pour commencer'}
+            WASD to move • Arrow keys to rotate camera
           </p>
         </div>
       </div>
@@ -472,18 +447,18 @@ export default function LimaGame() {
         onClick={toggleMusic}
         className="absolute bottom-6 right-6 bg-white/90 hover:bg-white text-gray-800 font-semibold py-3 px-6 rounded-full shadow-lg transition-all pointer-events-auto z-10"
       >
-        {isPlaying ? '🔊 Pausar Música' : '🎵 Reproducir Música Peruana'}
+        {isPlaying ? '🔊 Pause Music' : '🎵 Play Peruvian Music'}
       </button>
 
       {/* Información de lugares */}
       <div className="absolute bottom-6 left-6 bg-black/70 text-white p-4 rounded-lg max-w-sm pointer-events-none z-10">
-        <h3 className="font-bold text-lg mb-2">Lugares de Interés:</h3>
+        <h3 className="font-bold text-lg mb-2">Places of Interest:</h3>
         <ul className="text-sm space-y-1">
-          <li>🏛️ Plaza de Armas (Centro)</li>
-          <li>🔺 Huaca Pucllana (Izquierda)</li>
-          <li>💑 Parque del Amor (Derecha)</li>
-          <li>🌊 Malecón de Miraflores (Al fondo)</li>
-          <li>🏢 Edificios Modernos (San Isidro)</li>
+          <li>🏛️ Plaza de Armas (Center)</li>
+          <li>🔺 Huaca Pucllana (Left)</li>
+          <li>💑 Parque del Amor (Right)</li>
+          <li>🌊 Malecón de Miraflores (Far end)</li>
+          <li>🏢 Modern Buildings (San Isidro)</li>
         </ul>
       </div>
     </div>
