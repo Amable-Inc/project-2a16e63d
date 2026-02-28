@@ -418,18 +418,23 @@ export default function LimaGame() {
 
   const toggleMusic = () => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('https://www.bensound.com/bensound-music/bensound-tenderness.mp3');
+      // Using a working royalty-free Peruvian-style music
+      audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/05/13/audio_2c87ba6fa2.mp3');
       audioRef.current.loop = true;
-      audioRef.current.volume = 0.3;
+      audioRef.current.volume = 0.4;
     }
 
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(err => console.log('Audio playback failed:', err));
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => {
+          console.log('Audio playback failed:', err);
+          alert('Click the button again to play music (browser autoplay restriction)');
+        });
     }
-    
-    setIsPlaying(!isPlaying);
   };
 
   return (
